@@ -6,7 +6,7 @@ def mangafox(url):
     return MangafoxAdapter(url)
 
 class MangafoxAdapter(SiteAdapter):
-    url_pattern = re.compile(r"http://mangafox.\w+/manga/(?P<slug>[a-z_]+)(/v(?P<volume>\w+)/c(?P<chapter>\d+)/(?P<page>\d+).html)?")
+    url_pattern = re.compile(r"http://mangafox.\w+/manga/(?P<slug>[a-z_]+)(/v(?P<volume>[^/]+)/c(?P<chapter>[^/]+)/(?P<page>[^/]+).html)?")
 
     def __init__(self, url):
         super().__init__(url)
@@ -31,7 +31,7 @@ class MangafoxAdapter(SiteAdapter):
         match = self.url_pattern.match(link["href"])
         chap, vol = match.group('chapter', 'volume')
         return Chapter(url=link['href'],
-                       title=str(title.string),
+                       title=str(title.string) if title is not None else "Chapter {}".format(chap),
                        number=str(chap),
                        volume=str(vol))
 
@@ -54,11 +54,18 @@ class MangafoxAdapter(SiteAdapter):
 
     def get_pages(self, chapter):
         html = fetch_html(chapter.url)
+        select_tag = html.find('select', 'm')
+        if select_tag is None:
+            raise RuntimeError("{} does not contain a select.m".format(chapter.url))
         page_numbers = filter(lambda page: page.number != 0,
                               map(lambda option: self.make_page(option, chapter),
-                                  html.find('select', 'm').find_all('option')))
+                                  select_tag.find_all('option')))
         return list(page_numbers)
 
     def get_image(self, page):
         html = fetch_html(page.url)
-        return html.find('img', id='image')['src']
+        img = html.find('img', id='image')
+        if img is None:
+            raise RuntimeError("{} does not contain an img#image".format(page.url))
+
+        return img['src']

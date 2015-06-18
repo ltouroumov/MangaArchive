@@ -12,7 +12,7 @@ def fetch_image(url):
     else:
         resp = requests.get(url)
         if resp.status_code != 200:
-            raise FileNotFoundError("URL does not exist")
+            raise FileNotFoundError("HTTP Response: {} for {}".format(resp.status_code, url))
 
         os.makedirs(os.path.dirname(cache))
         open(cache, mode='wb+').write(resp.content)
@@ -22,7 +22,7 @@ def fetch_image(url):
 def fetch_html(url):
     resp = requests.get(url)
     if resp.status_code != 200:
-        raise FileNotFoundError("URL does not exist")
+        raise FileNotFoundError("HTTP Response: {} for {}".format(resp.status_code, url))
 
     return BeautifulSoup(resp.text, "lxml")
 
