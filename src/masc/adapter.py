@@ -6,7 +6,7 @@ def mangafox(url):
     return MangafoxAdapter(url)
 
 class MangafoxAdapter(SiteAdapter):
-    url_pattern = re.compile(r"http://mangafox.\w+/manga/(?P<slug>[a-z_]+)(/v(?P<volume>[^/]+)/c(?P<chapter>[^/]+)/(?P<page>[^/]+).html)?")
+    url_pattern = re.compile(r"http://mangafox.\w+/manga/(?P<slug>[a-z_]+)((/v(?P<volume>[^/]+))?/c(?P<chapter>[^/]+)/(?P<page>[^/]+).html)?")
 
     def __init__(self, url):
         super().__init__(url)
@@ -33,7 +33,7 @@ class MangafoxAdapter(SiteAdapter):
         return Chapter(url=link['href'],
                        title=str(title.string) if title is not None else "Chapter {}".format(chap),
                        number=str(chap),
-                       volume=str(vol))
+                       volume=str(vol) if vol is not None else str(chap))
 
     def make_page(self, option, chapter):
         page_no = int(option['value'])
