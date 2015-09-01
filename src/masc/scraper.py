@@ -1,6 +1,5 @@
 import pickle
 from multiprocessing import Pool
-from ebooklib import epub
 from masc.util import *
 from pprint import pprint
 
@@ -43,18 +42,43 @@ class SiteAdapter(object):
         raise NotImplementedError
 
 
+class FormatAdapter(object):
+    def __init__(self, adapter):
+        self.adapter = adapter
+
+    def file_format(self):
+        """
+        Return the file extension for this adapter
+        :return: a string
+        """
+        raise NotImplementedError
+
+    def build_volume(self, filename, volume, metadata):
+        """
+        Build a volume and save it to disk
+        (this method must be thread-safe)
+
+        :param filename: Target filename
+        :param volume: Volume descriptor
+        :param metadata: Series metadata
+        """
+        raise NotImplementedError
+
+
 class ScraperEngine(object):
     """
     Scrape and build an ebook per volume
     """
 
-    def __init__(self, adapter):
+    def __init__(self, adapter, format):
         """
         Creates the scraping engine
 
         :param adapter: SiteAdapter instance
+        :param format: FormatAdapter instance
         """
         self.adapter = adapter
+        self.format = format
         self.metadata = None
         self.dir = '.'
 
@@ -67,7 +91,7 @@ class ScraperEngine(object):
         """
         try:
             ebook_id = '%s-v%s' % (self.metadata.slug, volume.number)
-            filename = os.path.join(self.dir, ebook_id + ".epub")
+            filename = os.path.join(self.dir, ebook_id + self.format.file_format())
             try:
                 os.makedirs(self.dir)
             except FileExistsError:
@@ -77,61 +101,14 @@ class ScraperEngine(object):
                 print(filename, "already exists")
                 return
 
-            ebook = epub.EpubBook()
-            ebook.set_identifier(ebook_id)
-            ebook_title = "Volume {} - {}".format(volume.number, self.metadata.title)
-            ebook.set_title(ebook_title)
-            # ebook.set_cover('cover.jpg', fetch_image(self.cover_url))
+            self.format.build_volume(filename, volume, self.metadata)
 
-            spine_chapters = []
-            sorted_chapters = sorted(volume.chapters, key=lambda chap: chap.number)
-            # pprint(sorted_chapters)
-            for chapter in sorted_chapters:
-                eb_chapter, images = self.build_chapter(chapter)
-                ebook.add_item(eb_chapter)
-                for_each(images, ebook.add_item)
-                spine_chapters.append(eb_chapter)
-
-            ebook.add_item(epub.EpubNav())
-
-            ebook.toc = [epub.Section('Chapters')] + spine_chapters
-            ebook.spine = ['nav'] + spine_chapters
-
-            epub.write_epub(filename, ebook)
             print("Written", filename)
         except Exception as ex:
             import traceback
             print("Exception in build_volume")
             print(type(ex), ex.__cause__)
             traceback.print_tb(ex.__traceback__)
-
-    def build_chapter(self, chapter):
-        """
-        Create the epub objects and downloads images
-
-        :param chapter: Chapter to build from
-        :return: EpubHtml, [EpubImage]
-        """
-        print("{} - {}: {} ({} pages)".format(chapter.volume, chapter.number, chapter.title, len(chapter.pages)))
-        chap = epub.EpubHtml()
-        chap.title = chapter.title
-        chap.file_name = 'chap-%s.html' % chapter.number
-        chap_html = list()
-        images = list()
-
-        sorted_pages = sorted(chapter.pages, key=lambda p: p.number)
-        # pprint(sorted_pages)
-        for page in sorted_pages:
-            img = epub.EpubImage()
-            img.file_name = 'ch{}-p{}.jpg'.format(chapter.number, page.number)
-            if page.image_url is None:
-                page.image_url = self.adapter.get_image(page)
-            img.content = fetch_image(page.image_url)
-            chap_html.append('<img src="{}" />'.format(img.file_name))
-            images.append(img)
-
-        chap.content = str.join("\n", chap_html)
-        return chap, images
 
     def run(self, args):
         if args.out is not None:

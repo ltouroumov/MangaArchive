@@ -2,8 +2,10 @@ import re
 from masc.scraper import *
 from masc.util import fetch_html
 
+
 def mangafox(url):
     return MangafoxAdapter(url)
+
 
 class MangafoxAdapter(SiteAdapter):
     url_pattern = re.compile(r"http://mangafox.\w+/manga/(?P<slug>[a-z_]+)((/v(?P<volume>[^/]+))?/c(?P<chapter>[^/]+)/(?P<page>[^/]+).html)?")
