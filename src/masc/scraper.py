@@ -102,8 +102,7 @@ class ScraperEngine(object):
         except Exception as ex:
             import traceback
             print("Exception in build_volume")
-            print(type(ex), ex.__cause__)
-            traceback.print_tb(ex.__traceback__)
+            traceback.print_exc()
 
     def build_chapter(self, chapter):
         """
