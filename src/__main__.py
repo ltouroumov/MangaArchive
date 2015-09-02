@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('url', metavar='url', help='URL of the manga')
     parser.add_argument('adapter', default='MangafoxAdapter', help='Adapter class')
+    parser.add_argument('--format', default='ebook', help='Output format (ebook, cbz)')
     parser.add_argument('--out', default=None, help='Output directory (default: current)')
     parser.add_argument('--parallel', default=None, type=int, help='Number of concurrent threads (default: none)')
     parser.add_argument('--chapters', default=[], help="Specify chapters to build")
