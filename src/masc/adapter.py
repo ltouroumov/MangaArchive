@@ -3,6 +3,13 @@ from masc.scraper import *
 from masc.util import fetch_html
 
 
+def auto(url):
+    if 'mangafox.me' in url:
+        return MangafoxAdapter(url)
+    else:
+        raise RuntimeError("Unkown adapter")
+
+
 def mangafox(url):
     return MangafoxAdapter(url)
 

@@ -1,6 +1,6 @@
-import pickle
 from multiprocessing import Pool
 from masc.util import *
+from masc.descriptor import *
 from pprint import pprint
 
 
@@ -79,7 +79,7 @@ class ScraperEngine(object):
         """
         self.adapter = adapter
         self.format = format
-        self.metadata = None
+        self.descriptor = None
         self.dir = '.'
 
     def build_volume(self, volume):
@@ -90,7 +90,7 @@ class ScraperEngine(object):
         :return: None
         """
         try:
-            ebook_id = '%s-v%s' % (self.metadata.slug, volume.number)
+            ebook_id = '%s-v%s' % (self.descriptor.metadata.slug, volume.number)
             filename = os.path.join(self.dir, ebook_id + self.format.file_format())
             try:
                 os.makedirs(self.dir)
@@ -101,7 +101,7 @@ class ScraperEngine(object):
                 print(filename, "already exists")
                 return
 
-            self.format.build_volume(filename, volume, self.metadata)
+            self.format.build_volume(filename, volume, self.descriptor.metadata)
 
             print("Written", filename)
         except Exception as ex:
@@ -109,35 +109,44 @@ class ScraperEngine(object):
             print("Exception in build_volume")
             traceback.print_exc()
 
-    def run(self, args):
+    def crawl(self, args):
+        self.descriptor = Descriptor()
+        self.descriptor.metadata = self.adapter.get_meta()
+
+        print("Crawling ...")
+        chapters = self.adapter.get_chapters()
+        for chapter in chapters:
+            print("Chapter {}".format(chapter.number))
+            pages = self.adapter.get_pages(chapter)
+            for page in pages:
+                page.image_url = self.adapter.get_image(page)
+                chapter.add_page(page)
+
+            if chapter.volume not in self.descriptor.volumes:
+                self.descriptor.volumes[chapter.volume] = Volume(chapter.volume)
+            self.descriptor.volumes[chapter.volume].add_chapter(chapter)
+
+        if args.out is None:
+            cache_name = "{}.xml".format(self.descriptor.metadata.slug)
+        else:
+            cache_name = "{}.xml".format(args.out)
+
+        self.descriptor.save(cache_name)
+
+    def build(self, args):
         if args.out is not None:
             self.dir = args.out
 
-        self.metadata = self.adapter.get_meta()
+        if self.descriptor is None:
+            self.descriptor = Descriptor.load(args.descriptor)
 
-        cache_name = self.metadata.slug + '.cache'
-        if not args.rebuild and os.path.exists(cache_name):
-            print("Loading from cache")
-            volumes = pickle.load(open(cache_name, mode="rb"))
-        else:
-            print("Building cache")
-            volumes = dict()
-            chapters = self.adapter.get_chapters()
-            for chapter in chapters:
-                pages = self.adapter.get_pages(chapter)
-                for page in pages:
-                    # page.image_url = self.get_image(page)
-                    chapter.add_page(page)
+        print("Building ...")
+        sorted_volumes = sorted(self.descriptor.volumes.values(), key=lambda vol: vol.number)
 
-                if chapter.volume not in volumes:
-                    volumes[chapter.volume] = Volume(chapter.volume)
-                volumes[chapter.volume].add_chapter(chapter)
-
-            pickle.dump(volumes, open(cache_name, mode="wb+"))
-
-        print("Building Volumes")
-        sorted_volumes = sorted(volumes.values(), key=lambda vol: vol.number)
-        # pprint(sorted_volumes)
+        # filter volumes
+        if len(args.volumes) > 0:
+            print("Filtering volumes {}".format(args.volumes))
+            sorted_volumes = filter(lambda vol: vol.number in args.volumes, sorted_volumes)
 
         if args.parallel is None:
             for_each(sorted_volumes, self.build_volume)
@@ -145,52 +154,16 @@ class ScraperEngine(object):
             with Pool(processes=args.parallel) as pool:
                 pool.map(self.build_volume, sorted_volumes)
 
-        pickle.dump(volumes, open(cache_name, mode="wb+"))
+    def run(self, args):
+        if args.out is not None:
+            self.dir = args.out
 
+        cache_name = os.path.join(self.dir, "{}.xml".format(self.adapter.slug))
+        if not args.rebuild and os.path.exists(cache_name):
+            print("Loading from cache")
+            self.descriptor = Descriptor.load(cache_name)
+        else:
+            self.crawl(args)
 
-class Metadata(object):
-    def __init__(self, title, slug):
-        self.title = title
-        self.slug = slug
-        self.cover_url = None
-
-
-class Volume(object):
-    def __init__(self, number):
-        self.number = number
-        self.chapters = list()
-
-    def add_chapter(self, chapter):
-        self.chapters.append(chapter)
-
-    def __repr__(self):
-        return r"Volume({}, chapters={})".format(self.number, len(self.chapters))
-
-
-class Chapter(object):
-    def __init__(self, url, title, number, volume=None):
-        self.url = url
-        self.title = title
-        self.number = number
-        self.volume = volume
-        self.pages = list()
-
-    def add_page(self, page):
-        self.pages.append(page)
-
-    def __repr__(self):
-        return r"Chapter('{}', url='{}', number={}, volume={}, pages={})".format(self.title,
-                                                                                 self.url,
-                                                                                 self.number,
-                                                                                 self.volume,
-                                                                                 len(self.pages))
-
-
-class Page(object):
-    def __init__(self, url, number):
-        self.url = url
-        self.image_url = None
-        self.number = number
-
-    def __repr__(self):
-        return r"Page(url='{}', number={}, image_url='{}')".format(self.url, self.number, self.image_url)
+        self.build(args)
+        self.descriptor.save(cache_name)

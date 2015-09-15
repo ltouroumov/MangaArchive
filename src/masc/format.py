@@ -18,7 +18,7 @@ class EbookAdapter(FormatAdapter):
 
     def build_volume(self, filename, volume, metadata):
         book = epub.EpubBook()
-        book.set_identifier("%s-v%s" % (metadata.slug, volume.number))
+        book.set_identifier("{}-v{:0>2s}".format(metadata.slug, volume.number))
         book_title = "Volume {} - {}".format(volume.number, metadata.title)
         book.set_title(book_title)
         # ebook.set_cover('cover.jpg', fetch_image(self.cover_url))
@@ -57,7 +57,7 @@ class EbookAdapter(FormatAdapter):
         # pprint(sorted_pages)
         for page in sorted_pages:
             img = epub.EpubImage()
-            img.file_name = 'ch{}-p{}.jpg'.format(chapter.number, page.number)
+            img.file_name = 'ch{0!s:0>3s}-p{1!s:0>3s}.jpg'.format(chapter.number, page.number)
             if page.image_url is None:
                 page.image_url = self.adapter.get_image(page)
             img.content = fetch_image(page.image_url)
