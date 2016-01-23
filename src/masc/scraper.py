@@ -145,8 +145,9 @@ class ScraperEngine(object):
 
         # filter volumes
         if len(args.volumes) > 0:
-            print("Filtering volumes {}".format(args.volumes))
-            sorted_volumes = filter(lambda vol: vol.number in args.volumes, sorted_volumes)
+            volumes = [int(v) for v in args.volumes]
+            print("Filtering volumes {}".format(volumes))
+            sorted_volumes = filter(lambda vol: int(vol.number) in volumes, sorted_volumes)
 
         if args.parallel is None:
             for_each(sorted_volumes, self.build_volume)

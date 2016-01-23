@@ -32,11 +32,13 @@ class Descriptor(object):
 
                 for page_tag in chapter_tag.findall('page'):
                     page = Page(url=None,
-                                number=str(page_tag.get('number')))
+                                number=int(page_tag.get('number')))
                     page.image_url = str(page_tag.get('url'))
                     chapter.add_page(page)
 
                 volume.add_chapter(chapter)
+
+            volume.chapters.sort(key=lambda x: float(x.number))
 
             self.add_volume(volume)
 

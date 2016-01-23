@@ -1,5 +1,5 @@
 from masc.scraper import *
-from masc.util import fetch_image
+from masc.util import fetch_cached, FetchError
 from ebooklib import epub
 from zipfile import ZipFile
 
@@ -60,7 +60,7 @@ class EbookAdapter(FormatAdapter):
             img.file_name = 'ch{0!s:0>3s}-p{1!s:0>3s}.jpg'.format(chapter.number, page.number)
             if page.image_url is None:
                 page.image_url = self.adapter.get_image(page)
-            img.content = fetch_image(page.image_url)
+            img.content = fetch_cached(page.image_url)
             chap_html.append('<img src="{}" />'.format(img.file_name))
             images.append(img)
 
@@ -73,23 +73,30 @@ class ArchiveAdapter(FormatAdapter):
         return '.cbz'
 
     def build_volume(self, filename, volume, metadata):
-        archive = ZipFile(filename, 'w')
 
-        def build_chapter(chapter):
-            print("{} - {}: {} ({} pages)".format(chapter.volume, chapter.number, chapter.title, len(chapter.pages)))
+        def build_chapter(chap, arch):
+            print("{} - {}: {} ({} pages)".format(chap.volume, chap.number, chap.title, len(chap.pages)))
 
-            sorted_pages = sorted(chapter.pages, key=lambda p: p.number)
+            sorted_pages = sorted(chap.pages, key=lambda p: p.number)
             # pprint(sorted_pages)
             for page in sorted_pages:
-                file_name = 'ch{}-p{}.jpg'.format(chapter.number, page.number)
+                file_name = 'ch{}-p{:02d}.jpg'.format(chap.number, int(page.number))
                 if page.image_url is None:
                     page.image_url = self.adapter.get_image(page)
-                content = fetch_image(page.image_url)
-                archive.writestr(file_name, content)
+                content = fetch_cached(page.image_url)
+                arch.writestr(file_name, content)
 
         sorted_chapters = sorted(volume.chapters, key=lambda chap: chap.number)
         # pprint(sorted_chapters)
-        for chapter in sorted_chapters:
-            build_chapter(chapter)
+        archive = ZipFile(filename, 'w')
+        try:
+            for chapter in sorted_chapters:
+                build_chapter(chapter, archive)
 
-        archive.close()
+            archive.close()
+        except FetchError as e:
+            print("Error in volume {}: {}".format(volume.number, e))
+            archive.close()
+            os.remove(filename)
+        else:
+            archive.close()

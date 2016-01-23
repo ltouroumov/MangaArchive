@@ -31,6 +31,7 @@ def crawl(args):
     scraper = ScraperEngine(adapter, None)
     scraper.crawl(args)
 
+
 def build(args):
     format_cls_inst = None
     try:
@@ -43,6 +44,7 @@ def build(args):
 
     scraper = ScraperEngine(None, output)
     scraper.build(args)
+
 
 def download(args):
     adapter_cls_inst = None
@@ -59,6 +61,7 @@ def download(args):
 
     scraper = ScraperEngine(adapter, output)
     scraper.run(args)
+
 
 def fix_path(args):
     def fix_file(name):
