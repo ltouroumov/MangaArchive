@@ -95,3 +95,35 @@ def fix_path(args):
                 fix_file(path)
             except BadZipfile:
                 print("Error with file {}".format(path))
+
+
+def show(args):
+    from masc.descriptor import Descriptor
+    try:
+        descriptor = Descriptor.load(args.descriptor)
+
+        print("Title:", descriptor.metadata.title)
+        print("Slug:", descriptor.metadata.slug)
+        for number, volume in sorted(descriptor.volumes.items(), key=lambda p: p[0]):
+            print("Volume", number)
+            for chapter in sorted(volume.chapters, key=lambda c: c.number):
+                print("- Chapter %s: %s (%d pages)" % (chapter.number, chapter.title, len(chapter.pages)))
+
+    except Exception as ex:
+        print("Failed to process descriptor!", ex.args)
+
+
+def edit(args):
+    from masc.descriptor import Descriptor
+    from masc.util import merge
+    import code
+    try:
+        descriptor = Descriptor.load(args.descriptor)
+
+        code.interact(banner="Manga Scraper Editor", local=merge(locals(), {
+            'descriptor': descriptor,
+            'args': args
+        }))
+
+    except Exception as ex:
+        print("Failed to process descriptor!", ex.args)

@@ -38,9 +38,15 @@ if __name__ == "__main__":
     fix_parser = subparsers.add_parser('fix', help='Fix CBZ files in a path')
     fix_parser.add_argument('path', metavar='path', default='.', help='path to search CBZ files')
 
+    show_parser = subparsers.add_parser('show', help='Shows the contents of a descriptor')
+    show_parser.add_argument('descriptor', help='Name of the descriptor file')
+
+    edit_parser = subparsers.add_parser('edit', help='Edits a descriptor')
+    edit_parser.add_argument('descriptor', help='Name of the descriptor file')
+
     args = main_parser.parse_args()
 
-    from masc.main import download, fix_path, crawl, build
+    from masc.main import download, fix_path, crawl, build, show, edit
 
     if args.mode in ('download', 'dl'):
         download(args)
@@ -50,5 +56,9 @@ if __name__ == "__main__":
         build(args)
     elif args.mode == 'fix':
         fix_path(args)
+    elif args.mode == 'show':
+        show(args)
+    elif args.mode == 'edit':
+        edit(args)
     else:
         print("Unkown mode {}".format(args.mode))
