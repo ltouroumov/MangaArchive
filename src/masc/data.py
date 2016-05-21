@@ -38,9 +38,9 @@ class Chapter(object):
 
 
 class Page(object):
-    def __init__(self, url, number):
+    def __init__(self, url, number, image_url=None):
         self.url = url
-        self.image_url = None
+        self.image_url = image_url
         self.number = number
 
     def __repr__(self):

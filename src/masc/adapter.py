@@ -1,4 +1,5 @@
 import re
+import json
 from masc.scraper import *
 from masc.util import fetch_html
 
@@ -6,6 +7,8 @@ from masc.util import fetch_html
 def auto(url):
     if 'mangafox.me' in url:
         return MangafoxAdapter(url)
+    if 'http://dynasty-scans.com/' in url:
+        return DynastyScansAdapter(url)
     else:
         raise RuntimeError("Unkown adapter")
 
@@ -81,3 +84,66 @@ class MangafoxAdapter(SiteAdapter):
             raise RuntimeError("{} does not contain an img#image".format(page.url))
 
         return img['src']
+
+
+class DynastyScansAdapter(SiteAdapter):
+    url_pattern = re.compile(r"http://dynasty-scans.com/series/(?P<slug>[a-zA-Z0-9_]+)")
+
+    def __init__(self, url):
+        super().__init__(url)
+        match = self.url_pattern.match(url)
+        if match is None:
+            raise RuntimeError("URL does not match dynasty-scans pattern")
+
+        self.slug = match.group('slug')
+
+    def build_url(self, path):
+        pattern = r"http://dynasty-scans.com{path}"
+        return pattern.format(path=path)
+
+    def get_meta(self):
+        html = fetch_html(self.manga_url)
+        meta = Metadata(slug=self.slug, title=str(html.find('h2', 'tag-title').b))
+        meta.cover_url = str(html.find('img', 'thumbnail')['src'])
+
+        return meta
+
+    def get_chapters(self):
+        html = fetch_html(self.manga_url)
+        chapters_tag = html.find('dl', 'chapter-list')
+        current_volume = '00'
+        index = 1
+        chapters = list()
+        for tag in chapters_tag:
+            if tag.name == 'dt':
+                _, num = str(tag.string).split(' ', maxsplit=1)
+                current_volume = num
+            elif tag.name == 'dd':
+                url = tag.a['href']
+                chapter = Chapter(url=url, title=str(tag.a.string), number=index, volume=current_volume)
+                chapters.append(chapter)
+                index += 1
+
+        return chapters
+
+    def get_pages(self, chapter):
+        html = fetch_html(self.build_url(path=chapter.url))
+        script = str(html.find(lambda el: el.name == 'script' and not el.has_attr('src') and 'pages' in str(el)))
+
+        start_idx = script.find('var pages = [')
+        end_idx = script.rfind(';')
+
+        json_str = script[start_idx + 12:end_idx]
+        json_obj = json.loads(json_str)
+        pages = list()
+        page_num = 1
+        for page_obj in json_obj:
+            pages.append(Page(url=self.build_url(chapter.url + "#" + page_obj['name']),
+                              number=page_num,
+                              image_url=self.build_url(page_obj['image'])))
+            page_num += 1
+
+        return pages
+
+    def get_image(self, page):
+        return page.image_url

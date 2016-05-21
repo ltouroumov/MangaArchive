@@ -3,11 +3,10 @@ import sys
 
 if __name__ == "__main__":
     try:
-        import ebooklib
         import bs4
         import requests
     except ImportError:
-        print("Requires packages ebooklib, requests and beautifulsoup4")
+        print("Requires packages requests and beautifulsoup4")
         exit(-1)
 
     if sys.hexversion < 0x03030000:
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     crawl_parser_impl.add_argument('--out', default=None, help='Output file')
 
     build_parser = argparse.ArgumentParser(add_help=False)
-    build_parser.add_argument('--format', default='ebook', help='Output format (ebook, cbz)')
+    build_parser.add_argument('--format', default='cbz', help='Output format (ebook, cbz)')
     build_parser.add_argument('--out', default=None, help='Output directory (default: current)')
     build_parser.add_argument('--parallel', default=None, type=int, help='Number of concurrent threads (default: none)')
     build_parser.add_argument('--volumes', default=[], nargs='*', help="Specify chapters to build")

@@ -1,8 +1,9 @@
-import importlib
-import re
-import os
 import fnmatch
+import importlib
+import os
+import re
 from zipfile import ZipFile, BadZipfile
+
 from masc.scraper import ScraperEngine
 
 
@@ -66,7 +67,7 @@ def download(args):
 def fix_path(args):
     def fix_file(name):
         print("Fixing {}".format(name))
-        pattern = re.compile(r"^ch(?P<chap>\d+)-p(?P<page>\d+).jpg$")
+        pattern = re.compile(r"^ch(?P<chap>[^\-]+)-p(?P<page>\d+).jpg$")
 
         tmp_name = "{}.old".format(name)
         os.rename(name, tmp_name)
@@ -80,7 +81,7 @@ def fix_path(args):
                 new_file.writestr(file.filename, old_file.read(file.filename))
             else:
                 chap, page = match.group('chap', 'page')
-                new_name = "ch{:03d}-p{:03d}.jpg".format(int(chap), int(page))
+                new_name = "ch{:03.1f}-p{:03d}.jpg".format(float(chap), int(page)).replace(".0", "")
                 # print("Renaming {} to {}".format(file.filename, new_name))
                 new_file.writestr(new_name, old_file.read(file.filename))
 
