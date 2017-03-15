@@ -1,14 +1,14 @@
 .DEFAULT_GOAL := manga_scraper.pyz
 
 PREFIX := ~/.local/bin
-PYTHON := python3
+PYTHON := /usr/bin/env python3
 # $(shell which python)
 SRCDIR := ./src
 SRCS := $(wildcard $(SRCDIR)/*.py)
 APP := manga_scraper.pyz
 
 $(APP): $(SRCS)
-	python3 -m zipapp --output $(APP) --python $(PYTHON) $(SRCDIR)
+	python3 -m zipapp --output $(APP) --python "$(PYTHON)" $(SRCDIR)
 
 install: $(APP)
 	cp $(APP) $(PREFIX)/$(APP)
